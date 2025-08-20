@@ -1,6 +1,11 @@
-Resources:
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  CloudFormation template to securely deploy resources in a VPC.
+  Creates a VPC with public and private subnets, an Internet Gateway,
+  a NAT Gateway, and two EC2 instances accessible via Session Manager. [cite: 1, 2, 3]
 
-#  Creating VPC and Subnets
+Resources:
+  # Creating VPC and Subnets
   VPC:
     Type: AWS::EC2::VPC
     Properties:
@@ -32,8 +37,7 @@ Resources:
         - Key: Name
           Value: PrivateSubnet
 
-
-# Configuring the Internet Gateway and NAT Gateway
+  # Configuring the Internet Gateway and NAT Gateway
   InternetGateway:
     Type: AWS::EC2::InternetGateway
     Properties:
@@ -64,8 +68,7 @@ Resources:
         - Key: Name
           Value: MyNATGateway
 
-
-# Creating Route Tables and Routes
+  # Creating Route Tables and Routes
   PublicRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
@@ -109,13 +112,12 @@ Resources:
       SubnetId: !Ref PrivateSubnet
       RouteTableId: !Ref PrivateRouteTable
 
-
-# Creating the Security Groups
+  # Creating the Security Groups
   PublicWebServerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupName: WebServerSecurityGroup
-      GroupDescription: Enable HTTP/HTTPS access from anywhere
+      GroupDescription: Enable HTTP/HTTPS access and ICMP from Private Instance
       VpcId: !Ref VPC
       SecurityGroupIngress:
         - IpProtocol: tcp
@@ -148,7 +150,7 @@ Resources:
       ToPort: -1
       SourceSecurityGroupId: !Ref PrivateInstanceSecurityGroup
 
-# Configuring the IAM Role for Session Manager
+  # Configuring the IAM Role for Session Manager
   SsmInstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
@@ -170,8 +172,7 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
 
-
-# Creating the EC2 Instances
+  # Creating the EC2 Instances
   PublicWebServerInstance:
     Type: AWS::EC2::Instance
     Properties:
@@ -191,7 +192,7 @@ Resources:
           yum install -y httpd
           systemctl start httpd
           systemctl enable httpd
-          echo "<h1>Hello World from Your Abdul Baaki</h1>" > /var/www/html/index.html
+          echo "<h1>Your Full Name: Abdul Baaki</h1>" > /var/www/html/index.html
 
   PrivateInstance:
     Type: AWS::EC2::Instance
