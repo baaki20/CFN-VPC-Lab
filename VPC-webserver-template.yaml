@@ -169,3 +169,44 @@ Resources:
               - sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+
+
+# Creating the EC2 Instances
+  PublicWebServerInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-015cbce10f839bd0c
+      InstanceType: t3.micro
+      SubnetId: !Ref PublicSubnet
+      SecurityGroupIds:
+        - !Ref PublicWebServerSecurityGroup
+      IamInstanceProfile: !Ref SsmInstanceProfile
+      Tags:
+        - Key: Name
+          Value: PublicWebServer
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash
+          yum update -y
+          yum install -y httpd
+          systemctl start httpd
+          systemctl enable httpd
+          echo "<h1>Hello World from Your Abdul Baaki</h1>" > /var/www/html/index.html
+
+  PrivateInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-015cbce10f839bd0c
+      InstanceType: t3.micro
+      SubnetId: !Ref PrivateSubnet
+      SecurityGroupIds:
+        - !Ref PrivateInstanceSecurityGroup
+      IamInstanceProfile: !Ref SsmInstanceProfile
+      Tags:
+        - Key: Name
+          Value: PrivateInstance
+
+Outputs:
+  PublicWebServerIP:
+    Description: Public IP address of the web server
+    Value: !GetAtt PublicWebServerInstance.PublicIp
