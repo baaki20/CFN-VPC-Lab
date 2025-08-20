@@ -1,0 +1,3 @@
+template-file-path: VPC-webserver-template.yaml
+parameters: {}
+tags: {}
