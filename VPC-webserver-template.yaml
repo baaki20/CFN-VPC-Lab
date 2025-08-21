@@ -144,7 +144,7 @@ Resources:
           FromPort: 22
           ToPort: 22
           CidrIp: 0.0.0.0/0
-          Description: "Allow inbound SSH traffic from anywhere. (For demo purposes only, use specific IP range in production)."
+          Description: "Allow inbound SSH traffic from anywhere."
       Tags:
         - Key: Name
           Value: !Sub '${AWS::StackName}-WebSG'
@@ -160,7 +160,7 @@ Resources:
           FromPort: 22
           ToPort: 22
           SourceSecurityGroupId: !GetAtt PublicWebSecurityGroup.GroupId
-          Description: "Allow inbound SSH from the public web server's security group."
+          Description: "Allow inbound SSH from the public web server."
       Tags:
         - Key: Name
           Value: !Sub '${AWS::StackName}-PrivateSG'
