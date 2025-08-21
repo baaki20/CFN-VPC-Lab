@@ -20,7 +20,10 @@ Parameters:
   MyName:
     Type: String
     Description: Your full name, to be displayed on the web server.
-  LatestAmiId: ami-015cbce10f839bd0c
+  LatestAmiId:
+      Type: String
+      Default: ami-015cbce10f839bd0c
+      Description: The Amazon Linux 2 AMI ID for the instances.
     
 Resources:
   VPC:
