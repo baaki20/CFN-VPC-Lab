@@ -1,214 +1,227 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >
-  CloudFormation template to securely deploy resources in a VPC.
-  Creates a VPC with public and private subnets, an Internet Gateway,
-  a NAT Gateway, and two EC2 instances accessible via Session Manager. [cite: 1, 2, 3]
+  This template deploys a VPC with public and private subnets, an Internet Gateway, a NAT Gateway,
+  and two EC2 instances (one public web server, one private). The instances are
+  configured for access via AWS Systems Manager Session Manager. 
+
+Parameters:
+  VpcCidr:
+    Type: String
+    Default: 10.0.0.0/16
+    Description: CIDR block for the VPC.
+  PublicSubnetCidr:
+    Type: String
+    Default: 10.0.1.0/24
+    Description: CIDR block for the public subnet.
+  PrivateSubnetCidr:
+    Type: String
+    Default: 10.0.2.0/24
+    Description: CIDR block for the private subnet.
+  MyName:
+    Type: String
+    [cite_start]Description: Your full name, to be displayed on the web server. [cite: 9]
+  LatestAmiId:
+    Type: 'AWS::SSM::Parameter::Value<AmazonLinux2>'
+    Default: '/aws/service/ami-amazon-linux-2-latest/amzn2-ami-hvm-x86_64-gp2'
+    [cite_start]Description: The latest Amazon Linux 2 AMI ID. [cite: 12]
 
 Resources:
-  # Creating VPC and Subnets
   VPC:
-    Type: AWS::EC2::VPC
+    Type: 'AWS::EC2::VPC'
     Properties:
-      CidrBlock: 10.0.0.0/16
+      CidrBlock: !Ref VpcCidr
       EnableDnsSupport: true
       EnableDnsHostnames: true
       Tags:
         - Key: Name
-          Value: MyVPC
+          Value: !Sub '${AWS::StackName}-VPC'
 
-  PublicSubnet:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC
-      CidrBlock: 10.0.1.0/24
-      AvailabilityZone: !Select [0, !GetAZs ""]
-      MapPublicIpOnLaunch: true
-      Tags:
-        - Key: Name
-          Value: PublicSubnet
-
-  PrivateSubnet:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC
-      CidrBlock: 10.0.2.0/24
-      AvailabilityZone: !Select [1, !GetAZs ""]
-      Tags:
-        - Key: Name
-          Value: PrivateSubnet
-
-  # Configuring the Internet Gateway and NAT Gateway
   InternetGateway:
-    Type: AWS::EC2::InternetGateway
+    Type: 'AWS::EC2::InternetGateway'
     Properties:
       Tags:
         - Key: Name
-          Value: MyIGW
+          Value: !Sub '${AWS::StackName}-IGW'
 
   AttachGateway:
-    Type: AWS::EC2::VPCGatewayAttachment
+    Type: 'AWS::EC2::VPCGatewayAttachment'
     Properties:
       VpcId: !Ref VPC
       InternetGatewayId: !Ref InternetGateway
 
-  NatGatewayEIP:
-    Type: AWS::EC2::EIP
+  PublicSubnet:
+    Type: 'AWS::EC2::Subnet'
     Properties:
-      Domain: vpc
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: !Ref PublicSubnetCidr
+      MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
-          Value: NatGatewayEIP
+          Value: !Sub '${AWS::StackName}-PublicSubnet'
+
+  PrivateSubnet:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      CidrBlock: !Ref PrivateSubnetCidr
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-PrivateSubnet'
+
+  EIP:
+    Type: 'AWS::EC2::EIP'
+    Properties:
+      Domain: vpc
 
   NatGateway:
-    Type: AWS::EC2::NatGateway
+    Type: 'AWS::EC2::NatGateway'
     Properties:
-      AllocationId: !GetAtt NatGatewayEIP.AllocationId
+      AllocationId: !GetAtt EIP.AllocationId
       SubnetId: !Ref PublicSubnet
       Tags:
         - Key: Name
-          Value: MyNATGateway
+          Value: !Sub '${AWS::StackName}-NatGateway'
 
-  # Creating Route Tables and Routes
   PublicRouteTable:
-    Type: AWS::EC2::RouteTable
+    Type: 'AWS::EC2::RouteTable'
     Properties:
       VpcId: !Ref VPC
       Tags:
         - Key: Name
-          Value: PublicRouteTable
+          Value: !Sub '${AWS::StackName}-PublicRouteTable'
+
+  PrivateRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-PrivateRouteTable'
 
   PublicRoute:
-    Type: AWS::EC2::Route
+    Type: 'AWS::EC2::Route'
     DependsOn: AttachGateway
     Properties:
       RouteTableId: !Ref PublicRouteTable
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref InternetGateway
 
-  PublicSubnetRouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PublicSubnet
-      RouteTableId: !Ref PublicRouteTable
-
-  PrivateRouteTable:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref VPC
-      Tags:
-        - Key: Name
-          Value: PrivateRouteTable
-
   PrivateRoute:
-    Type: AWS::EC2::Route
+    Type: 'AWS::EC2::Route'
     Properties:
       RouteTableId: !Ref PrivateRouteTable
       DestinationCidrBlock: 0.0.0.0/0
       NatGatewayId: !Ref NatGateway
 
+  PublicSubnetRouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicRouteTable
+
   PrivateSubnetRouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
     Properties:
       SubnetId: !Ref PrivateSubnet
       RouteTableId: !Ref PrivateRouteTable
 
-  # Creating the Security Groups
-  PublicWebServerSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
+  PublicWebSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
     Properties:
-      GroupName: WebServerSecurityGroup
-      GroupDescription: Enable HTTP/HTTPS access and ICMP from Private Instance
+      GroupName: !Sub '${AWS::StackName}-WebSG'
+      GroupDescription: "Allow HTTP and SSH access to the public web server."
       VpcId: !Ref VPC
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
           CidrIp: 0.0.0.0/0
+          Description: "Allow inbound HTTP traffic from anywhere."
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+          Description: "Allow inbound SSH traffic from anywhere. (For demo purposes only, use specific IP range in production)."
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-WebSG'
 
   PrivateInstanceSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
+    Type: 'AWS::EC2::SecurityGroup'
     Properties:
-      GroupName: PrivateInstanceSecurityGroup
-      GroupDescription: Enable ICMP access from the Public Web Server
+      GroupName: !Sub '${AWS::StackName}-PrivateSG'
+      GroupDescription: "Allow inbound SSH traffic from the public web server."
       VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          SourceSecurityGroupId: !GetAtt PublicWebSecurityGroup.GroupId
+          Description: "Allow inbound SSH from the public web server's security group."
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-PrivateSG'
 
-  PublicWebToPrivateIngressRule:
-    Type: AWS::EC2::SecurityGroupIngress
-    Properties:
-      GroupId: !Ref PrivateInstanceSecurityGroup
-      IpProtocol: icmp
-      FromPort: -1
-      ToPort: -1
-      SourceSecurityGroupId: !Ref PublicWebServerSecurityGroup
-
-  PrivateToPublicWebIngressRule:
-    Type: AWS::EC2::SecurityGroupIngress
-    Properties:
-      GroupId: !Ref PublicWebServerSecurityGroup
-      IpProtocol: icmp
-      FromPort: -1
-      ToPort: -1
-      SourceSecurityGroupId: !Ref PrivateInstanceSecurityGroup
-
-  # Configuring the IAM Role for Session Manager
-  SsmInstanceProfile:
-    Type: AWS::IAM::InstanceProfile
-    Properties:
-      InstanceProfileName: SSM-Access-Instance-Profile
-      Roles:
-        - !Ref SsmRole
-
-  SsmRole:
-    Type: AWS::IAM::Role
+  SSMInstanceRole:
+    Type: 'AWS::IAM::Role'
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: 2012-10-17
         Statement:
           - Effect: Allow
             Principal:
               Service: ec2.amazonaws.com
-            Action:
-              - sts:AssumeRole
+            Action: 'sts:AssumeRole'
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
-
-
-# Creating the EC2 Instances
-  PublicWebServerInstance:
-    Type: AWS::EC2::Instance
-    Properties:
-      ImageId: ami-015cbce10f839bd0c
-      InstanceType: t3.micro
-      SubnetId: !Ref PublicSubnet
-      SecurityGroupIds:
-        - !Ref PublicWebServerSecurityGroup
-      IamInstanceProfile: !Ref SsmInstanceProfile
+        - 'arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore'
       Tags:
         - Key: Name
-          Value: PublicWebServer
+          Value: !Sub '${AWS::StackName}-SSM-Role'
+
+  SSMInstanceProfile:
+    Type: 'AWS::IAM::InstanceProfile'
+    Properties:
+      InstanceProfileName: !Sub '${AWS::StackName}-SSM-Instance-Profile'
+      Roles:
+        - !Ref SSMInstanceRole
+
+  PublicWebServer:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: !Ref LatestAmiId
+      InstanceType: t3.micro
+      IamInstanceProfile: !Ref SSMInstanceProfile
+      SubnetId: !Ref PublicSubnet
+      SecurityGroupIds:
+        - !Ref PublicWebSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-Public-Webserver'
       UserData:
-        Fn::Base64: |
+        'Fn::Base64': !Sub |
           #!/bin/bash
           yum update -y
           yum install -y httpd
           systemctl start httpd
           systemctl enable httpd
-          echo "<h1>Hello World from Your Abdul Baaki</h1>" > /var/www/html/index.html
+          echo "<h1>Hello from my Apache Web Server, I am ${MyName}.</h1>" > /var/www/html/index.html
 
   PrivateInstance:
-    Type: AWS::EC2::Instance
+    Type: 'AWS::EC2::Instance'
     Properties:
-      ImageId: ami-015cbce10f839bd0c
+      ImageId: !Ref LatestAmiId
       InstanceType: t3.micro
+      IamInstanceProfile: !Ref SSMInstanceProfile
       SubnetId: !Ref PrivateSubnet
       SecurityGroupIds:
         - !Ref PrivateInstanceSecurityGroup
-      IamInstanceProfile: !Ref SsmInstanceProfile
       Tags:
         - Key: Name
-          Value: PrivateInstance
+          Value: !Sub '${AWS::StackName}-Private-Instance'
 
 Outputs:
-  PublicWebServerIP:
-    Description: Public IP address of the web server
-    Value: !GetAtt PublicWebServerInstance.PublicIp
+  WebserverPublicIp:
+    Description: The public IP address of the web server instance.
+    Value: !GetAtt PublicWebServer.PublicIp
