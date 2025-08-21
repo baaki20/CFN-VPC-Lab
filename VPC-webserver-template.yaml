@@ -172,7 +172,8 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
 
-  # Creating the EC2 Instances
+
+# Creating the EC2 Instances
   PublicWebServerInstance:
     Type: AWS::EC2::Instance
     Properties:
@@ -192,7 +193,7 @@ Resources:
           yum install -y httpd
           systemctl start httpd
           systemctl enable httpd
-          echo "<h1>Your Full Name: Abdul Baaki</h1>" > /var/www/html/index.html
+          echo "<h1>Hello World from Your Abdul Baaki</h1>" > /var/www/html/index.html
 
   PrivateInstance:
     Type: AWS::EC2::Instance
