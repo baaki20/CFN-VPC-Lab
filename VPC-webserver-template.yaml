@@ -20,10 +20,7 @@ Parameters:
   MyName:
     Type: String
     Description: Your full name, to be displayed on the web server.
-  LatestAmiId:
-    Type: 'AWS::SSM::Parameter::Value<String>'
-    Default: '/aws/service/ami-amazon-linux-2-latest/amzn2-ami-hvm-x86_64-gp2'
-    Description: The latest Amazon Linux 2 AMI ID.
+  LatestAmiId: ami-015cbce10f839bd0c
     
 Resources:
   VPC:
