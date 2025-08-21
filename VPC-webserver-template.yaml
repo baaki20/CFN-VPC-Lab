@@ -19,6 +19,7 @@ Parameters:
     Description: CIDR block for the private subnet.
   MyName:
     Type: String
+    Default: Abdul Baaki
     Description: Your full name, to be displayed on the web server.
   LatestAmiId:
       Type: String
