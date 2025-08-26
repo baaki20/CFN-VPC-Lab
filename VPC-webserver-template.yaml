@@ -22,8 +22,8 @@ Parameters:
     Default: Abdul Baaki
     Description: Your full name, to be displayed on the web server.
   LatestAmiId:
-      Type: String
-      Default: ami-015cbce10f839bd0c
+      Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+      Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
       Description: The Amazon Linux 2 AMI ID for the instances.
     
 Resources:
